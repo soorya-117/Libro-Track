@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LibroTrack — Circulation Desk</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F1ECDD;
+    --panel: #FBF8EF;
+    --panel-hover: #F5F0E1;
+    --ink: #20291F;
+    --ink-soft: #55604F;
+    --pine: #2B4636;
+    --pine-dark: #1D3226;
+    --brass: #A3702F;
+    --brass-light: #C98F49;
+    --line: #D8CFB8;
+    --line-strong: #C6BB9C;
+    --brick: #A13D2B;
+    --brick-soft: #F1DED8;
+    --moss: #4C7A5A;
+    --moss-soft: #DEE8DE;
+    --radius: 3px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:"IBM Plex Serif", serif; font-weight:600; margin:0; }
+  a{ color:var(--brass); }
+  button{ font-family:inherit; }
+  ::selection{ background:var(--brass-light); color:#fff; }
+  :focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+
+  .skip-link{ position:absolute; left:-999px; top:0; }
+  .skip-link:focus{ left:8px; top:8px; z-index:100; background:var(--pine); color:#fff; padding:8px 12px; border-radius:var(--radius); }
+
+  /* ---- Top bar ---- */
+  header.topbar{
+    background:var(--pine);
+    color:#F4EFE1;
+    padding:22px 24px 0;
+  }
+  .topbar-inner{
+    max-width:920px;
+    margin:0 auto;
+  }
+  .wordmark{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .wordmark h1{
+    font-size:26px;
+    font-style:italic;
+    letter-spacing:0.2px;
+    color:#fff;
+  }
+  .wordmark span{
+    color:#C9D8C9;
+    font-size:13.5px;
+  }
+  nav.tabs{
+    margin-top:18px;
+    display:flex;
+    gap:4px;
+    border-bottom:1px solid #3E5E4B;
+  }
+  nav.tabs button{
+    background:none;
+    border:none;
+    color:#CBD9CB;
+    padding:10px 16px;
+    font-size:14.5px;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+    transition:color .15s ease, border-color .15s ease;
+  }
+  nav.tabs button:hover{ color:#fff; }
+  nav.tabs button[aria-selected="true"]{
+    color:#fff;
+    border-bottom-color:var(--brass-light);
+    font-weight:500;
+  }
+
+  /* ---- Layout ---- */
+  main{
+    max-width:920px;
+    margin:0 auto;
+    padding:28px 24px 80px;
+  }
+  .panel-view{ display:none; }
+  .panel-view.active{ display:block; animation:rise .25s ease; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce){
+    .panel-view.active{ animation:none; }
+    *{ transition:none !important; }
+  }
+
+  section.block{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    margin-bottom:20px;
+  }
+  section.block h2{ font-size:19px; margin-bottom:4px; }
+  .block-hint{ color:var(--ink-soft); font-size:13.5px; margin:0 0 16px; max-width:60ch; }
+
+  /* ---- Status strip ---- */
+  #status{
+    display:none;
+    max-width:920px;
+    margin:16px auto 0;
+    padding:0 24px;
+  }
+  #status.show{ display:block; }
+  .status-msg{
+    border-radius:var(--radius);
+    padding:11px 14px;
+    font-size:14px;
+    border:1px solid transparent;
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+  }
+  .status-msg.ok{ background:var(--moss-soft); border-color:#B9CFB9; color:#2C4A34; }
+  .status-msg.err{ background:var(--brick-soft); border-color:#E0BCB2; color:#7A2B1D; }
+  .status-msg button{ background:none; border:none; color:inherit; cursor:pointer; font-size:15px; opacity:.7; line-height:1;}
+  .status-msg button:hover{ opacity:1; }
+  .status-msg ul{ margin:4px 0 0; padding-left:18px; }
+
+  /* ---- Forms ---- */
+  form.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:14px 16px;
+    align-items:end;
+  }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12.5px; color:var(--ink-soft); }
+  .field input, .field select{
+    border:1px solid var(--line-strong);
+    background:#fff;
+    border-radius:var(--radius);
+    padding:9px 10px;
+    font-size:14.5px;
+    color:var(--ink);
+    font-family:inherit;
+  }
+  .field input:focus, .field select:focus{ border-color:var(--brass); }
+  .field-actions{ display:flex; gap:8px; }
+
+  button.btn{
+    border:1px solid var(--pine);
+    background:var(--pine);
+    color:#fff;
+    padding:9px 16px;
+    border-radius:var(--radius);
+    font-size:14px;
+    cursor:pointer;
+    transition:background .15s ease;
+    white-space:nowrap;
+  }
+  button.btn:hover{ background:var(--pine-dark); }
+  button.btn.secondary{
+    background:transparent;
+    color:var(--pine);
+  }
+  button.btn.secondary:hover{ background:#EAE4D0; }
+  button.btn.ghost{
+    background:none;
+    border-color:var(--line-strong);
+    color:var(--ink-soft);
+    padding:5px 10px;
+    font-size:13px;
+  }
+  button.btn.ghost:hover{ background:var(--panel-hover); color:var(--ink); }
+  button.btn:disabled{ opacity:.55; cursor:default; }
+
+  .toggle-row{ display:flex; justify-content:space-between; align-items:center; }
+
+  /* ---- Table ---- */
+  table{ width:100%; border-collapse:collapse; margin-top:6px; }
+  th{
+    text-align:left;
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:500;
+    padding:7px 10px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  td{
+    padding:10px 10px;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+    vertical-align:top;
+  }
+  tr:last-child td{ border-bottom:none; }
+  td.num, th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .muted{ color:var(--ink-soft); }
+  .empty-row td{ color:var(--ink-soft); font-style:italic; padding:18px 10px; }
+
+  .pill{
+    display:inline-block;
+    font-size:12px;
+    padding:2px 8px;
+    border-radius:20px;
+    border:1px solid var(--line-strong);
+  }
+  .pill.out{ color:var(--brick); border-color:#E0BCB2; background:var(--brick-soft); }
+  .pill.ok{ color:var(--moss); border-color:#B9CFB9; background:var(--moss-soft); }
+
+  .inline-edit-form{ margin-top:14px; padding-top:16px; border-top:1px dashed var(--line-strong); }
+
+  /* ---- Circulation two-column ---- */
+  .split{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:640px){ .split{ grid-template-columns:1fr; } }
+
+  .result-card{
+    margin-top:16px;
+    padding:14px 15px;
+    border-radius:var(--radius);
+    background:var(--panel-hover);
+    border:1px solid var(--line);
+    font-size:14px;
+  }
+  .result-card dl{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0; }
+  .result-card dt{ color:var(--ink-soft); }
+  .result-card dd{ margin:0; }
+  .fine-flag{ color:var(--brick); font-weight:600; }
+  .no-fine{ color:var(--moss); font-weight:600; }
+
+  /* ---- Ledger ---- */
+  .ledger-item{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:13px 15px;
+    margin-top:10px;
+    background:var(--panel-hover);
+  }
+  .ledger-item h3{ font-size:15px; font-weight:600; font-family:"IBM Plex Sans",sans-serif; }
+  .ledger-item .meta{ font-size:13px; color:var(--ink-soft); margin-top:3px; }
+  .ledger-item .overdue{ color:var(--brick); font-weight:600; }
+
+  code.mono{ font-family:"IBM Plex Mono", monospace; font-size:12.5px; }
+
+  footer{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12.5px;
+    padding:20px 24px 40px;
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="wordmark">
+      <h1>LibroTrack</h1>
+      <span>Circulation desk</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" aria-selected="true" aria-controls="panel-catalog" id="tab-catalog" data-panel="catalog">Catalog</button>
+      <button role="tab" aria-selected="false" aria-controls="panel-circulation" id="tab-circulation" data-panel="circulation">Circulation</button>
+      <button role="tab" aria-selected="false" aria-controls="panel-ledger" id="tab-ledger" data-panel="ledger">Student ledger</button>
+    </nav>
+  </div>
+</header>
+
+<div id="status" aria-live="polite"></div>
+
+<main id="main">
+
+  <!-- ===================== CATALOG ===================== -->
+  <div class="panel-view active" id="panel-catalog" role="tabpanel" aria-labelledby="tab-catalog">
+
+    <section class="block">
+      <h2>Find a book</h2>
+      <p class="block-hint">Search by title, author or category, or leave every field blank to list the whole catalog.</p>
+      <form class="grid" id="search-form">
+        <div class="field">
+          <label for="s-title">Title</label>
+          <input id="s-title" name="title" type="text" placeholder="e.g. Clean Code">
+        </div>
+        <div class="field">
+          <label for="s-author">Author</label>
+          <input id="s-author" name="author" type="text" placeholder="e.g. Martin">
+        </div>
+        <div class="field">
+          <label for="s-category">Category</label>
+          <input id="s-category" name="category" type="text" placeholder="e.g. Programming">
+        </div>
+        <div class="field-actions">
+          <button class="btn" type="submit">Search</button>
+          <button class="btn secondary" type="button" id="show-all-btn">Show all</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="block">
+      <div class="toggle-row">
+        <div>
+          <h2>Catalog</h2>
+          <p class="block-hint" id="results-count">Loading books…</p>
+        </div>
+        <button class="btn" type="button" id="add-book-toggle">Add a book</button>
+      </div>
+
+      <div id="book-form-wrap" class="inline-edit-form" hidden>
+        <h3 id="book-form-title" style="font-size:15px;margin-bottom:12px;">Add a book</h3>
+        <form class="grid" id="book-form">
+          <input type="hidden" id="b-id">
+          <div class="field">
+            <label for="b-title">Title</label>
+            <input id="b-title" required type="text">
+          </div>
+          <div class="field">
+            <label for="b-author">Author</label>
+            <input id="b-author" required type="text">
+          </div>
+          <div class="field">
+            <label for="b-isbn">ISBN</label>
+            <input id="b-isbn" required type="text">
+          </div>
+          <div class="field">
+            <label for="b-category">Category</label>
+            <input id="b-category" type="text">
+          </div>
+          <div class="field">
+            <label for="b-copies">Copies</label>
+            <input id="b-copies" required type="number" min="0" step="1">
+          </div>
+          <div class="field-actions">
+            <button class="btn" type="submit" id="book-form-submit">Save book</button>
+            <button class="btn ghost" type="button" id="book-form-cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Category</th>
+            <th class="num">Copies</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="books-body">
+          <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- ===================== CIRCULATION ===================== -->
+  <div class="panel-view" id="panel-circulation" role="tabpanel" aria-labelledby="tab-circulation" hidden>
+    <div class="split">
+      <section class="block">
+        <h2>Issue a book</h2>
+        <p class="block-hint">Loans run 14 days from today. The book must have at least one copy available.</p>
+        <form id="issue-form">
+          <div class="field" style="margin-bottom:12px;">
+            <label for="i-book-id">Book ID</label>
+            <input id="i-book-id" required type="number" min="1">
+          </div>
+          <div class="field" style="margin-bottom:14px;">
+            <label for="i-student-id">Student ID</label>
+            <input id="i-student-id" required type="number" min="1">
+          </div>
+          <button class="btn" type="submit">Issue book</button>
+        </form>
+        <div id="issue-result"></div>
+      </section>
+
+      <section class="block">
+        <h2>Return a book</h2>
+        <p class="block-hint">Enter the issue record ID. A fine of ₹5/day is applied automatically if it's overdue.</p>
+        <form id="return-form">
+          <div class="field" style="margin-bottom:14px;">
+            <label for="r-issue-id">Issue record ID</label>
+            <input id="r-issue-id" required type="number" min="1">
+          </div>
+          <button class="btn" type="submit">Return book</button>
+        </form>
+        <div id="return-result"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===================== LEDGER ===================== -->
+  <div class="panel-view" id="panel-ledger" role="tabpanel" aria-labelledby="tab-ledger" hidden>
+    <section class="block">
+      <h2>Student ledger</h2>
+      <p class="block-hint">Look up which books a student currently has on loan, and whether any are overdue.</p>
+      <form class="grid" id="ledger-form" style="max-width:340px;">
+        <div class="field">
+          <label for="l-student-id">Student ID</label>
+          <input id="l-student-id" required type="number" min="1">
+        </div>
+        <div class="field-actions">
+          <button class="btn" type="submit">Look up</button>
+        </div>
+      </form>
+      <div id="ledger-results" style="margin-top:6px;"></div>
+    </section>
+  </div>
+
+</main>
+
+<footer>LibroTrack circulation desk — talks to the API on this same server.</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const API = "/api";
+
+  /* ---------------- Status strip ---------------- */
+  const statusEl = document.getElementById("status");
+  function showStatus(kind, message, details){
+    let detailHtml = "";
+    if (details && details.length){
+      detailHtml = "<ul>" + details.map(d => `<li>${escapeHtml(d)}</li>`).join("") + "</ul>";
+    }
+    statusEl.innerHTML = `<div class="status-msg ${kind}"><div>${escapeHtml(message)}${detailHtml}</div>
+      <button type="button" aria-label="Dismiss">&times;</button></div>`;
+    statusEl.classList.add("show");
+    statusEl.querySelector("button").addEventListener("click", () => statusEl.classList.remove("show"));
+  }
+  function clearStatus(){ statusEl.classList.remove("show"); statusEl.innerHTML=""; }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  /* ---------------- API helper ---------------- */
+  async function api(method, path, body){
+    let res;
+    try{
+      res = await fetch(API + path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+    }catch(networkErr){
+      throw { message: "Couldn't reach the server. Is the LibroTrack app running on this port?", details: [] };
+    }
+    let data = null;
+    const text = await res.text();
+    if (text){ try{ data = JSON.parse(text); }catch(e){ data = null; } }
+    if (!res.ok){
+      if (data && data.error){
+        throw { message: data.error, details: [] };
+      }
+      if (data && typeof data === "object"){
+        const details = Object.entries(data).map(([field, msg]) => `${field}: ${msg}`);
+        throw { message: "Please fix the following:", details };
+      }
+      throw { message: `Request failed (${res.status})`, details: [] };
+    }
+    return data;
+  }
+
+  /* ---------------- Tabs ---------------- */
+  const tabs = document.querySelectorAll("nav.tabs button");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.setAttribute("aria-selected", "false"));
+      tab.setAttribute("aria-selected", "true");
+      document.querySelectorAll(".panel-view").forEach(p => { p.classList.remove("active"); p.hidden = true; });
+      const panel = document.getElementById("panel-" + tab.dataset.panel);
+      panel.hidden = false;
+      panel.classList.add("active");
+      clearStatus();
+    });
+  });
+
+  /* ---------------- Catalog: search & list ---------------- */
+  const booksBody = document.getElementById("books-body");
+  const resultsCount = document.getElementById("results-count");
+
+  function renderBooks(books){
+    if (!books || books.length === 0){
+      booksBody.innerHTML = `<tr class="empty-row"><td colspan="5">No books match — try clearing the search or add one below.</td></tr>`;
+      resultsCount.textContent = "0 books";
+      return;
+    }
+    resultsCount.textContent = books.length + (books.length === 1 ? " book" : " books");
+    booksBody.innerHTML = books.map(b => `
+      <tr>
+        <td>${escapeHtml(b.title)}<div class="muted" style="font-size:12px;">#${b.id} · <code class="mono">${escapeHtml(b.isbn||"")}</code></div></td>
+        <td>${escapeHtml(b.author||"")}</td>
+        <td>${escapeHtml(b.category||"—")}</td>
+        <td class="num">${b.copies}
+          ${b.copies > 0 ? `<span class="pill ok">available</span>` : `<span class="pill out">all issued</span>`}
+        </td>
+        <td><button class="btn ghost" type="button" data-edit="${b.id}">Edit</button></td>
+      </tr>
+    `).join("");
+
+    booksBody.querySelectorAll("[data-edit]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const book = books.find(x => String(x.id) === btn.dataset.edit);
+        openBookForm(book);
+      });
+    });
+  }
+
+  async function loadBooks(params){
+    booksBody.innerHTML = `<tr class="empty-row"><td colspan="5">Loading…</td></tr>`;
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    try{
+      const books = await api("GET", "/books/search" + qs);
+      renderBooks(books);
+    }catch(e){
+      booksBody.innerHTML = `<tr class="empty-row"><td colspan="5">Couldn't load the catalog.</td></tr>`;
+      showStatus("err", e.message, e.details);
+    }
+  }
+
+  document.getElementById("search-form").addEventListener("submit", e => {
+    e.preventDefault();
+    clearStatus();
+    const params = {};
+    ["title","author","category"].forEach(f => {
+      const v = document.getElementById("s-" + f).value.trim();
+      if (v) params[f] = v;
+    });
+    loadBooks(params);
+  });
+  document.getElementById("show-all-btn").addEventListener("click", () => {
+    document.getElementById("search-form").reset();
+    clearStatus();
+    loadBooks();
+  });
+
+  /* ---------------- Catalog: add / edit book ---------------- */
+  const formWrap = document.getElementById("book-form-wrap");
+  const bookForm = document.getElementById("book-form");
+  const formTitle = document.getElementById("book-form-title");
+  const submitBtn = document.getElementById("book-form-submit");
+
+  function openBookForm(book){
+    formWrap.hidden = false;
+    if (book){
+      formTitle.textContent = "Edit \u201c" + book.title + "\u201d";
+      submitBtn.textContent = "Save changes";
+      document.getElementById("b-id").value = book.id;
+      document.getElementById("b-title").value = book.title || "";
+      document.getElementById("b-author").value = book.author || "";
+      document.getElementById("b-isbn").value = book.isbn || "";
+      document.getElementById("b-category").value = book.category || "";
+      document.getElementById("b-copies").value = book.copies;
+    } else {
+      formTitle.textContent = "Add a book";
+      submitBtn.textContent = "Save book";
+      bookForm.reset();
+      document.getElementById("b-id").value = "";
+    }
+    document.getElementById("b-title").focus();
+    formWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.getElementById("add-book-toggle").addEventListener("click", () => {
+    if (!formWrap.hidden && !document.getElementById("b-id").value){
+      formWrap.hidden = true;
+    } else {
+      openBookForm(null);
+    }
+  });
+  document.getElementById("book-form-cancel").addEventListener("click", () => { formWrap.hidden = true; });
+
+  bookForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    clearStatus();
+    const id = document.getElementById("b-id").value;
+    const payload = {
+      title: document.getElementById("b-title").value.trim(),
+      author: document.getElementById("b-author").value.trim(),
+      isbn: document.getElementById("b-isbn").value.trim(),
+      category: document.getElementById("b-category").value.trim(),
+      copies: Number(document.getElementById("b-copies").value)
+    };
+    submitBtn.disabled = true;
+    try{
+      if (id){
+        await api("PUT", `/books/${id}`, payload);
+        showStatus("ok", `Updated "${payload.title}".`);
+      } else {
+        await api("POST", "/books", payload);
+        showStatus("ok", `Added "${payload.title}" to the catalog.`);
+      }
+      formWrap.hidden = true;
+      loadBooks();
+    }catch(err){
+      showStatus("err", err.message, err.details);
+    }finally{
+      submitBtn.disabled = false;
+    }
+  });
+
+  /* ---------------- Circulation: issue ---------------- */
+  document.getElementById("issue-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    clearStatus();
+    const bookId = document.getElementById("i-book-id").value;
+    const studentId = document.getElementById("i-student-id").value;
+    const resultEl = document.getElementById("issue-result");
+    try{
+      const rec = await api("POST", "/issues", { bookId: Number(bookId), studentId: Number(studentId) });
+      resultEl.innerHTML = `
+        <div class="result-card">
+          <dl>
+            <dt>Issue record</dt><dd>#${rec.id}</dd>
+            <dt>Book</dt><dd>${escapeHtml(rec.book?.title || "—")}</dd>
+            <dt>Student</dt><dd>${escapeHtml(rec.student?.name || "—")}</dd>
+            <dt>Issued</dt><dd>${rec.issueDate}</dd>
+            <dt>Due</dt><dd>${rec.dueDate}</dd>
+          </dl>
+        </div>`;
+      showStatus("ok", "Book issued.");
+      loadBooks();
+    }catch(err){
+      resultEl.innerHTML = "";
+      showStatus("err", err.message, err.details);
+    }
+  });
+
+  /* ---------------- Circulation: return ---------------- */
+  document.getElementById("return-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    clearStatus();
+    const issueId = document.getElementById("r-issue-id").value;
+    const resultEl = document.getElementById("return-result");
+    try{
+      const rec = await api("PUT", `/issues/${issueId}/return`);
+      const fine = Number(rec.fine || 0);
+      resultEl.innerHTML = `
+        <div class="result-card">
+          <dl>
+            <dt>Book</dt><dd>${escapeHtml(rec.book?.title || "—")}</dd>
+            <dt>Due date</dt><dd>${rec.dueDate}</dd>
+            <dt>Returned</dt><dd>${rec.returnDate}</dd>
+            <dt>Fine</dt><dd class="${fine > 0 ? "fine-flag" : "no-fine"}">₹${fine.toFixed(2)}${fine > 0 ? " overdue" : " — on time"}</dd>
+          </dl>
+        </div>`;
+      showStatus("ok", "Book returned.");
+      loadBooks();
+    }catch(err){
+      resultEl.innerHTML = "";
+      showStatus("err", err.message, err.details);
+    }
+  });
+
+  /* ---------------- Ledger ---------------- */
+  document.getElementById("ledger-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    clearStatus();
+    const studentId = document.getElementById("l-student-id").value;
+    const resultsEl = document.getElementById("ledger-results");
+    resultsEl.innerHTML = `<p class="block-hint">Looking up…</p>`;
+    try{
+      const records = await api("GET", `/students/${studentId}/issues`);
+      if (!records || records.length === 0){
+        resultsEl.innerHTML = `<p class="block-hint">No books currently on loan for this student.</p>`;
+        return;
+      }
+      const today = new Date(); today.setHours(0,0,0,0);
+      resultsEl.innerHTML = records.map(r => {
+        const due = new Date(r.dueDate);
+        const daysLeft = Math.round((due - today) / 86400000);
+        const overdue = daysLeft < 0;
+        const statusText = overdue
+          ? `<span class="overdue">${Math.abs(daysLeft)} day${Math.abs(daysLeft)===1?"":"s"} overdue</span>`
+          : (daysLeft === 0 ? "Due today" : `Due in ${daysLeft} day${daysLeft===1?"":"s"}`);
+        return `
+          <div class="ledger-item">
+            <h3>${escapeHtml(r.book?.title || "—")}</h3>
+            <div class="meta">Issued ${r.issueDate} · Due ${r.dueDate} · ${statusText} · Issue record #${r.id}</div>
+          </div>`;
+      }).join("");
+    }catch(err){
+      resultsEl.innerHTML = "";
+      showStatus("err", err.message, err.details);
+    }
+  });
+
+  /* ---------------- Init ---------------- */
+  loadBooks();
+})();
+</script>
+</body>
+</html>
